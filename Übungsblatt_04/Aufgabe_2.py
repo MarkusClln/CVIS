@@ -8,7 +8,7 @@ imgAuto = img[150:300,780:1070,:]
 
 img[200:350,40:330,:]=imgAuto
 
-#cv2.imshow("Bildanzeige",img)
-#cv2.waitKey(0)
+cv2.imshow("Bildanzeige",img)
+cv2.waitKey(0)
 
 cv2.imwrite("saves/Aufgabe2.png",img)
