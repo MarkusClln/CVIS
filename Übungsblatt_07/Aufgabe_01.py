@@ -86,6 +86,7 @@ def matches_1():
     img1 = cv2.imread(image_pathes[0])
     img2 = cv2.imread(image_pathes[1])
 
+    print("matches 1: "+str(len(matches)))
     img_out = cv2.drawMatches(img1, keypoints_cv2_1, img2, keypoints_cv2_2, matches, None)
     cv2.imwrite("out\\1_all.png", img_out)
 
@@ -105,6 +106,7 @@ def matches_1():
             pts1.append(keypoints_cv2_1[m.queryIdx].pt)
             pts2.append(keypoints_cv2_2[m.trainIdx].pt)
 
+    print("matches 1 with 0.7: " + str(len(good)))
     img_out=cv2.drawMatchesKnn(img1, keypoints_cv2_1, img2, keypoints_cv2_2, good, None)
     cv2.imwrite("out\\1_0,7.png", img_out)
 
@@ -123,6 +125,7 @@ def matches_2():
     img1 = cv2.imread(image_pathes[2])
     img2 = cv2.imread(image_pathes[3])
 
+    print("matches 2: " + str(len(matches)))
     img_out = cv2.drawMatches(img1, keypoints_cv2_3, img2, keypoints_cv2_4, matches, None)
     cv2.imwrite("out\\2_all.png", img_out)
 
@@ -142,7 +145,9 @@ def matches_2():
             pts1.append(keypoints_cv2_3[m.queryIdx].pt)
             pts2.append(keypoints_cv2_4[m.trainIdx].pt)
 
+    print("matches 2 0.7: " + str(len(good)))
     img_out=cv2.drawMatchesKnn(img1, keypoints_cv2_3, img2, keypoints_cv2_4, good, None)
     cv2.imwrite("out\\2_0,7.png", img_out)
 
+matches_1()
 matches_2()
