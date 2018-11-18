@@ -58,21 +58,23 @@ def matches_1():
     good = []
     pts1 = []
     pts2 = []
-    theshold_matching = 0.7
+    theshold_matching = 0.8
     for m,n in matches:
         if m.distance < theshold_matching*n.distance:
             good.append([m])
             pts1.append(keypoints_cv2_1[m.queryIdx].pt)
             pts2.append(keypoints_cv2_2[m.trainIdx].pt)
 
-    print("matches 1 with 0.7: " + str(len(good)))
+    print("matches 1 with 0.8: " + str(len(good)))
     img_out=cv2.drawMatchesKnn(img1, keypoints_cv2_1, img2, keypoints_cv2_2, good, None)
-    cv2.imwrite("out\\1_0,7.png", img_out)
+    cv2.imwrite("out\\1_0,8.png", img_out)
 
     pts1 = np.int32(pts1)
     pts2 = np.int32(pts2)
     #create FundamentalMatrix
     F, mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_LMEDS)
+
+
     #select only -----
     pts1 = pts1[mask.ravel() == 1]
     pts2 = pts2[mask.ravel() == 1]
@@ -84,11 +86,132 @@ def matches_1():
 
     lines2 = cv2.computeCorrespondEpilines(pts1.reshape(-1, 1, 2), 1, F)
     lines2 = lines2.reshape(-1, 3)
-    img3, img4 = drawlines(gray2, gray1, lines2, pts1, pts2)
-    cv2.imshow('img', img1)
-    cv2.waitKey(2000)
-    cv2.imshow('img', img3)
-    cv2.waitKey(2000)
+    img3, img4 = drawlines(gray2, gray1, lines2, pts2, pts1)
+    #cv2.imshow('img', img1)
+    cv2.imwrite("out\\1_08.png", img1)
+    #cv2.waitKey(8000)
+    #cv2.imshow('img', img3)
+    cv2.imwrite("out\\2_08.png", img3)
+    #cv2.waitKey(8000)
 
 
-matches_1()
+def matches_2():
+    descriptors_cv2_1 = to_cv2_di(descriptors3)
+    descriptors_cv2_2 = to_cv2_di(descriptors4)
+
+    keypoints_cv2_1 = to_cv2_kplist(detected_keypoints3)
+    keypoints_cv2_2 = to_cv2_kplist(detected_keypoints4)
+
+
+    bf = cv2.BFMatcher()
+
+    img1 = cv2.imread(image_pathes[2])
+    img2 = cv2.imread(image_pathes[3])
+
+    matches = bf.knnMatch(descriptors_cv2_1,descriptors_cv2_2, k=2)
+    good = []
+    pts1 = []
+    pts2 = []
+    theshold_matching = 0.8
+    for m,n in matches:
+        if m.distance < theshold_matching*n.distance:
+            good.append([m])
+            pts1.append(keypoints_cv2_1[m.queryIdx].pt)
+            pts2.append(keypoints_cv2_2[m.trainIdx].pt)
+
+    print("matches 2 with 0.8: " + str(len(good)))
+    img_out=cv2.drawMatchesKnn(img1, keypoints_cv2_1, img2, keypoints_cv2_2, good, None)
+    cv2.imwrite("out\\2_0,8.png", img_out)
+
+    pts1 = np.int32(pts1)
+    pts2 = np.int32(pts2)
+    #create FundamentalMatrix
+    F, mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_LMEDS)
+
+    #fx = fy = 721.5
+    #cx = 690.5
+    #cy = 172.8
+    #F[0][0] = fx
+    #F[0][2] = cx
+    #F[1][1] = fy
+    #F[1][2] = cy
+    # F = np.matrix([[fx, 0, cx], [0, fy, cy], [0, 0, 0]])
+
+    #select only -----
+    pts1 = pts1[mask.ravel() == 1]
+    pts2 = pts2[mask.ravel() == 1]
+    lines = cv2.computeCorrespondEpilines(pts2.reshape(-1, 1, 2), 2, F)
+    lines = lines.reshape(-1, 3)
+    gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+    gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+    img1, img2 = drawlines(gray1, gray2, lines, pts1, pts2)
+
+    lines2 = cv2.computeCorrespondEpilines(pts1.reshape(-1, 1, 2), 1, F)
+    lines2 = lines2.reshape(-1, 3)
+    img3, img4 = drawlines(gray2, gray1, lines2, pts2, pts1)
+    #cv2.imshow('img', img1)
+    cv2.imwrite("out\\3_08.png", img1)
+    #cv2.waitKey(8000)
+    #cv2.imshow('img', img3)
+    cv2.imwrite("out\\4_08.png", img3)
+    #cv2.waitKey(8000)
+
+
+def Aufgabe_02():
+    descriptors_cv2_1 = to_cv2_di(descriptors1)
+    descriptors_cv2_2 = to_cv2_di(descriptors2)
+
+    keypoints_cv2_1 = to_cv2_kplist(detected_keypoints1)
+    keypoints_cv2_2 = to_cv2_kplist(detected_keypoints2)
+
+    bf = cv2.BFMatcher()
+
+    img1 = cv2.imread(image_pathes[0])
+    img2 = cv2.imread(image_pathes[1])
+
+    matches = bf.knnMatch(descriptors_cv2_1, descriptors_cv2_2, k=2)
+    good = []
+    pts1_real = []
+    pts2_real = []
+    theshold_matching = 0.8
+    for m, n in matches:
+        if m.distance < theshold_matching * n.distance:
+            good.append([m])
+            pts1_real.append(keypoints_cv2_1[m.queryIdx].pt)
+            pts2_real.append(keypoints_cv2_2[m.trainIdx].pt)
+    pts1 = np.int32(pts1_real)
+    pts2 = np.int32(pts2_real)
+    F, mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_LMEDS)
+    fx = fy = 721.5
+    cx = 690.5
+    cy = 172.8
+    K = np.matrix([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+    E = K.T *np.mat(F)*K
+    R1, R2, t = cv2.decomposeEssentialMat(E)
+
+    P1 = K * np.hstack((R1, t))
+    P2 = K * np.hstack((R2, t))
+    pointcloud = cv2.triangulatePoints(P1, P2, pts1[0], pts2[0])
+
+    print(pointcloud)
+
+
+    ply_header = '''ply
+        format ascii 1.0
+        element vertex %(vert_num)d
+        property float x
+        property float y
+        property float z
+        end_header
+        '''
+
+
+    def write_ply(fn, verts):
+        verts = verts.reshape(-1, 3)
+        with open(fn, 'w') as f:
+            f.write(ply_header % dict(vert_num=len(verts)))
+            np.savext(f, verts, '%f %f %f')
+
+    write_ply('out\\punktwolke.ply', pointcloud)
+
+Aufgabe_02()
