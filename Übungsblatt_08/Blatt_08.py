@@ -58,7 +58,7 @@ def matches_1():
     good = []
     pts1 = []
     pts2 = []
-    theshold_matching = 0.8
+    theshold_matching = 0.7
     for m,n in matches:
         if m.distance < theshold_matching*n.distance:
             good.append([m])
@@ -112,7 +112,7 @@ def matches_2():
     good = []
     pts1 = []
     pts2 = []
-    theshold_matching = 0.8
+    theshold_matching = 0.7
     for m,n in matches:
         if m.distance < theshold_matching*n.distance:
             good.append([m])
@@ -121,7 +121,7 @@ def matches_2():
 
     print("matches 2 with 0.8: " + str(len(good)))
     img_out=cv2.drawMatchesKnn(img1, keypoints_cv2_1, img2, keypoints_cv2_2, good, None)
-    cv2.imwrite("out\\2_0,8.png", img_out)
+    cv2.imwrite("out\\.2_0,8png", img_out)
 
     pts1 = np.int32(pts1)
     pts2 = np.int32(pts2)
@@ -166,34 +166,58 @@ def Aufgabe_02():
 
     bf = cv2.BFMatcher()
 
-    img1 = cv2.imread(image_pathes[0])
-    img2 = cv2.imread(image_pathes[1])
-
     matches = bf.knnMatch(descriptors_cv2_1, descriptors_cv2_2, k=2)
     good = []
     pts1_real = []
     pts2_real = []
-    theshold_matching = 0.8
+    theshold_matching = 0.7
     for m, n in matches:
         if m.distance < theshold_matching * n.distance:
             good.append([m])
             pts1_real.append(keypoints_cv2_1[m.queryIdx].pt)
             pts2_real.append(keypoints_cv2_2[m.trainIdx].pt)
-    pts1 = np.int32(pts1_real)
-    pts2 = np.int32(pts2_real)
+
+    pts1 = np.float32(pts1_real)
+    pts2 = np.float32(pts2_real)
     F, mask = cv2.findFundamentalMat(pts1, pts2, cv2.FM_LMEDS)
     fx = fy = 721.5
     cx = 690.5
     cy = 172.8
     K = np.matrix([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
+    I= np.eye(3)
+    O = np.zeros((3,1))
+
+
+
+    P0 = K.dot(np.hstack((I,O)))
     E = K.T *np.mat(F)*K
     R1, R2, t = cv2.decomposeEssentialMat(E)
 
-    P1 = K * np.hstack((R1, t))
-    P2 = K * np.hstack((R2, t))
-    pointcloud = cv2.triangulatePoints(P1, P2, pts1[0], pts2[0])
+    P1_1 = K.dot(np.hstack((R1, t)))
 
-    print(pointcloud)
+    P2_1 = K * np.hstack((R1, -t))
+
+    P3_1 = K * np.hstack((R2, t))
+
+    P4_1 = K * np.hstack((R2, -t))
+
+
+    #print(pts1)
+    #print(pts2)
+    #first_inliers = np.array(pts1).reshape(-1, 3)[:, :2]
+    #second_inliers = np.array(pts2).reshape(-1, 3)[:, :2]
+
+    #print(pts1)
+    #pts1 = np.resize(pts1,(1,3))
+    print(pts1)
+
+    print(pts1.T)
+
+    #pointcloud = cv2.triangulatePoints(P0, P1_1, pts1.T, pts2.T)
+    #pointcloud = cv2.triangulatePoints(P2_1, P0, pts1.T, pts2.T)
+    #pointcloud = cv2.triangulatePoints(P3_1, P0, pts1.T, pts2.T)
+    #pointcloud = cv2.triangulatePoints(P4_1, P0, pts1.T, pts2.T)
+    #print(pointcloud)
 
 
     ply_header = '''ply
@@ -210,8 +234,9 @@ def Aufgabe_02():
         verts = verts.reshape(-1, 3)
         with open(fn, 'w') as f:
             f.write(ply_header % dict(vert_num=len(verts)))
-            np.savext(f, verts, '%f %f %f')
+            np.savetxt(f, verts, '%f %f %f')
 
-    write_ply('out\\punktwolke.ply', pointcloud)
+    #write_ply('out\\punktwolke.ply', pointcloud)
 
+matches_1()
 Aufgabe_02()
