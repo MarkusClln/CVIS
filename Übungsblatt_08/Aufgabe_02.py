@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import pickle
 
-class FettaShiat():
+class creator():
     def __init__(self, K):
         with open('keypoints.pkl') as f:
             self.img1_kp_f, self.img1_ds_f, self.img2_kp_f, self.img2_ds_f, self.img3_kp_f, self.img3_ds_f, self.img4_kp_f, self.img4_ds_f = pickle.load(f)
@@ -28,12 +28,12 @@ class FettaShiat():
         return np.asarray(di, np.float32)
 
     def find_good_points(self, theshold):
-        img1_kp = self.to_cv2_kplist(self.first_img_kp)
-        img1_ds = self.to_cv2_di(self.first_img_ds)
-        img2_kp = self.to_cv2_kplist(self.second_img_kp)
-        img2_ds = self.to_cv2_di(self.second_img_ds)
+        self.img1_kp = self.to_cv2_kplist(self.first_img_kp)
+        self.img1_ds = self.to_cv2_di(self.first_img_ds)
+        self.img2_kp = self.to_cv2_kplist(self.second_img_kp)
+        self.img2_ds = self.to_cv2_di(self.second_img_ds)
         bf = cv2.BFMatcher()
-        matches = bf.knnMatch(img1_ds, img2_ds, k=2)
+        matches = bf.knnMatch(self.img1_ds, self.img2_ds, k=2)
 
         self.good = []
         self.pts1 = []
@@ -43,8 +43,8 @@ class FettaShiat():
         for m, n in matches:
             if m.distance < theshold_matching * n.distance:
                 self.good.append([m])
-                self.pts1.append(img1_kp[m.queryIdx].pt)
-                self.pts2.append(img2_kp[m.trainIdx].pt)
+                self.pts1.append(self.img1_kp[m.queryIdx].pt)
+                self.pts2.append(self.img2_kp[m.trainIdx].pt)
 
         self.pts1 = np.float32(self.pts1)
         self.pts2 = np.float32(self.pts2)
@@ -63,6 +63,45 @@ class FettaShiat():
             if(x<0):
                 counter += 1
         return counter
+
+    def drawlines(self, img1, img2, lines, pts1, pts2):
+        r, c = img1.shape
+        img1 = cv2.cvtColor(img1, cv2.COLOR_GRAY2BGR)
+        img2 = cv2.cvtColor(img2, cv2.COLOR_GRAY2BGR)
+        for r, pt1, pt2 in zip(lines, pts1, pts2):
+            color = tuple(np.random.randint(0, 255, 3).tolist())
+            x0, y0 = map(int, [0, -r[2] / r[1]])
+            x1, y1 = map(int, [c, -(r[2] + r[0] * c) / r[1]])
+            img1 = cv2.line(img1, (x0, y0), (x1, y1), color, 1)
+            img1 = cv2.circle(img1, tuple(pt1), 5, color, -1)
+            img2 = cv2.circle(img2, tuple(pt2), 5, color, -1)
+        return img1, img2
+
+    def draw_Matches(self, path_1, path_2):
+        img1 = cv2.imread(path_1)
+        img2 = cv2.imread(path_2)
+        img_out = cv2.drawMatchesKnn(img1, self.img1_kp, img2, self.img2_kp, self.good, None)
+        cv2.imshow('img', img_out)
+        cv2.waitKey(8000)
+
+    def draw_epi(self, path_1, path_2):
+        img1 = cv2.imread(path_1)
+        img2 = cv2.imread(path_2)
+        pts1 = self.pts1[self.mask.ravel() == 1]
+        pts2 = self.pts2[self.mask.ravel() == 1]
+        lines = cv2.computeCorrespondEpilines(pts2.reshape(-1, 1, 2), 2, self.F)
+        lines = lines.reshape(-1, 3)
+        gray1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+        gray2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+        img1, img2 = self.drawlines(gray1, gray2, lines, pts1, pts2)
+
+        lines2 = cv2.computeCorrespondEpilines(pts1.reshape(-1, 1, 2), 1, self.F)
+        lines2 = lines2.reshape(-1, 3)
+        img3, img4 = self.drawlines(gray2, gray1, lines2, pts2, pts1)
+        cv2.imshow('img', img1)
+        cv2.waitKey(8000)
+        cv2.imshow('img', img3)
+        cv2.waitKey(8000)
 
     def create_pointcloud(self):
         I = np.eye(3)
@@ -84,17 +123,17 @@ class FettaShiat():
         x3_valid = self.validate_points(X3)
         x4_valid = self.validate_points(X4)
 
+
         list_valids =[x1_valid, x2_valid, x3_valid, x4_valid]
         min_value = min(list_valids)
-        print(min_value)
         if(min_value == x1_valid):
-            return X1
+            return cv2.convertPointsFromHomogeneous(X1.T)
         elif(min_value == x2_valid):
-            return X2
+            return cv2.convertPointsFromHomogeneous(X2.T)
         elif(min_value==x3_valid):
-            return X3
+            return cv2.convertPointsFromHomogeneous(X3.T)
         elif(min_value==x4_valid):
-            return X4
+            return cv2.convertPointsFromHomogeneous(X4.T)
 
     def write_ply(self, fn, verts):
         ply_header = '''ply
@@ -105,11 +144,12 @@ class FettaShiat():
                 property float z
                 end_header
                 '''
-        print(verts)
         verts = verts.reshape(-1, 3)
         with open(fn, 'w') as f:
             f.write(ply_header % dict(vert_num=len(verts)))
             np.savetxt(f, verts, '%f %f %f')
+
+image_pathes = glob.glob("images\*.png")
 fx = 721.5
 fy = 721.5
 cx = 690.5
@@ -117,11 +157,14 @@ cy = 172.8
 
 K = np.matrix([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], np.float)
 
-A = FettaShiat(K)
-#A.set_img(A.img1_kp_f, A.img1_ds_f, A.img2_kp_f, A.img2_ds_f)
-A.set_img(A.img3_kp_f, A.img3_ds_f, A.img4_kp_f, A.img4_ds_f)
+A = creator(K)
+A.set_img(A.img1_kp_f, A.img1_ds_f, A.img2_kp_f, A.img2_ds_f)
+#A.set_img(A.img3_kp_f, A.img3_ds_f, A.img4_kp_f, A.img4_ds_f)
 A.find_good_points(0.7)
 A.find_fundamental_mat()
 A.find_essential_mat()
 pointcloud = A.create_pointcloud()
 A.write_ply('out\\punktwolke_pic2.ply', pointcloud)
+
+#A.draw_Matches(image_pathes[0], image_pathes[1])
+A.draw_epi(image_pathes[0], image_pathes[1])
