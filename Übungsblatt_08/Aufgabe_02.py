@@ -59,7 +59,7 @@ class creator():
 
     def validate_points(self, pointcloud):
         counter = 0
-        for x in pointcloud[2]:
+        for x in pointcloud[2][0]:
             if(x<0):
                 counter += 1
         return counter
@@ -118,22 +118,27 @@ class creator():
         X3 = cv2.triangulatePoints(P0, P3, self.pts1.T, self.pts2.T)
         X4 = cv2.triangulatePoints(P0, P4, self.pts1.T, self.pts2.T)
 
-        x1_valid = self.validate_points(X1)
-        x2_valid = self.validate_points(X2)
-        x3_valid = self.validate_points(X3)
-        x4_valid = self.validate_points(X4)
+        X1 = cv2.convertPointsFromHomogeneous(X1.T)
+        X2 = cv2.convertPointsFromHomogeneous(X2.T)
+        X3 = cv2.convertPointsFromHomogeneous(X3.T)
+        X4 = cv2.convertPointsFromHomogeneous(X4.T)
+
+        x1_valid = self.validate_points(X1.T)
+        x2_valid = self.validate_points(X2.T)
+        x3_valid = self.validate_points(X3.T)
+        x4_valid = self.validate_points(X4.T)
 
 
         list_valids =[x1_valid, x2_valid, x3_valid, x4_valid]
         min_value = min(list_valids)
         if(min_value == x1_valid):
-            return cv2.convertPointsFromHomogeneous(X1.T)
+            return X1
         elif(min_value == x2_valid):
-            return cv2.convertPointsFromHomogeneous(X2.T)
+            return X2
         elif(min_value==x3_valid):
-            return cv2.convertPointsFromHomogeneous(X3.T)
+            return X3
         elif(min_value==x4_valid):
-            return cv2.convertPointsFromHomogeneous(X4.T)
+            return X4
 
     def write_ply(self, fn, verts):
         ply_header = '''ply
