@@ -149,7 +149,9 @@ class creator():
                 property float z
                 end_header
                 '''
+        print(verts)
         verts = verts.reshape(-1, 3)
+        print(verts)
         with open(fn, 'w') as f:
             f.write(ply_header % dict(vert_num=len(verts)))
             np.savetxt(f, verts, '%f %f %f')
@@ -163,8 +165,8 @@ cy = 172.8
 K = np.matrix([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], np.float)
 
 A = creator(K)
-A.set_img(A.img1_kp_f, A.img1_ds_f, A.img2_kp_f, A.img2_ds_f)
-#A.set_img(A.img3_kp_f, A.img3_ds_f, A.img4_kp_f, A.img4_ds_f)
+#A.set_img(A.img1_kp_f, A.img1_ds_f, A.img2_kp_f, A.img2_ds_f)
+A.set_img(A.img3_kp_f, A.img3_ds_f, A.img4_kp_f, A.img4_ds_f)
 A.find_good_points(0.7)
 A.find_fundamental_mat()
 A.find_essential_mat()
@@ -172,4 +174,4 @@ pointcloud = A.create_pointcloud()
 A.write_ply('out\\punktwolke_pic2.ply', pointcloud)
 
 #A.draw_Matches(image_pathes[0], image_pathes[1])
-A.draw_epi(image_pathes[0], image_pathes[1])
+#A.draw_epi(image_pathes[0], image_pathes[1])
