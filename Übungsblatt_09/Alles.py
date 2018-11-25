@@ -153,13 +153,32 @@ class creator():
         with open(fn, 'w') as f:
             f.write(ply_header % dict(vert_num=len(verts)))
             np.savetxt(f, verts, '%f %f %f')
+
+    def write_plyC(self, fn, verts):
+        ply_header = '''ply
+                format ascii 1.0
+                element vertex %(vert_num)d
+                property float x
+                property float y
+                property float z
+                property uchar red
+                property uchar green
+                property uchar blue
+                end_header
+                '''
+        verts = verts.reshape(-1, 6)
+        with open(fn, 'w') as f:
+            f.write(ply_header % dict(vert_num=len(verts)))
+            np.savetxt(f, verts, '%f %f %f %d %d %d')
+
+
     def depthmap(self, path1, path2):
         img1 = cv2.imread(path1)
         img2 = cv2.imread(path2)
 
-        blockSize = 10  # Gibt Fenstergroesse an (1-20)
-        min_disp = 10  # Gibt minimale Disparitaet an (0-10)
-        y = 2
+        blockSize = 15  # Gibt Fenstergroesse an (1-20)
+        min_disp = 1  # Gibt minimale Disparitaet an (0-10)
+        y = 1
         num_disp = 16 * y  # Gibt maxinale Disparitaet an
 
         stereo = cv2.StereoSGBM_create(minDisparity=min_disp, numDisparities=num_disp, blockSize=blockSize)
@@ -167,28 +186,34 @@ class creator():
         disparity = stereo.compute(img1, img2).astype(np.float32) / 16.0
 
         pic_out = np.zeros((len(disparity), len(disparity[0]), 6), np.uint8)
-
+        img_color = cv2.applyColorMap(img1, cv2.COLORMAP_JET)
 
         for n in range(0, len(disparity)):
             for m in range(0, len(disparity[n])):
                 pic_out[n][m][0]=n
                 pic_out[n][m][1] =m
-                pic_out[n][m][2] =self.get_Z(disparity[n][m])
-                pic_out[n][m][3] = img1[n][m][0]
-                pic_out[n][m][4] = img1[n][m][1]
-                pic_out[n][m][5] = img1[n][m][2]
-        cv2.imshow('img', pic_out)
-        cv2.waitKey(8000)
+                pic_out[n][m][2] = self.get_Z(disparity[n][m])
+                disparity[n][m] = self.get_Z(disparity[n][m])
+                pic_out[n][m][3] = img_color[n][m][0]
+                pic_out[n][m][4] = img_color[n][m][1]
+                pic_out[n][m][5] = img_color[n][m][2]
+
+
+        self.write_plyC('out\\punktwolke.ply', pic_out)
+        #cv2.imshow('img', img_out)
+        #cv2.waitKey(8000)
 
 
     def get_Z(self, value):
-        print(self.K[0][0][0][0][0])
-        print(self.t[0])
         if(value == 0):
             return 0
         else:
-            out = (self.K[0][0] * self.t[0]) / value
-            return out
+            out = (self.K.item(0) * self.t.item(0)) / value
+            if(out>255):
+                return 255
+            else:
+                #print("mapped "+str(value)+" to "+str(out))
+                return out
 
 image_pathes = glob.glob("images\*.png")
 fx = 721.5
