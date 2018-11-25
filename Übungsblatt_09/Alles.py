@@ -176,50 +176,56 @@ class creator():
         img1 = cv2.imread(path1)
         img2 = cv2.imread(path2)
 
-        blockSize = 15  # Gibt Fenstergroesse an (1-20)
+        blockSize = 10  # Gibt Fenstergroesse an (1-20)
         min_disp = 1  # Gibt minimale Disparitaet an (0-10)
-        y = 1
+        y = 4
         num_disp = 16 * y  # Gibt maxinale Disparitaet an
 
-        stereo = cv2.StereoSGBM_create(minDisparity=min_disp, numDisparities=num_disp, blockSize=blockSize)
+        stereo = cv2.StereoSGBM_create(minDisparity=min_disp, numDisparities=num_disp, blockSize=blockSize, speckleWindowSize = 100, speckleRange = 1 )
 
         disparity = stereo.compute(img1, img2).astype(np.float32) / 16.0
+        disparity_max = disparity.max()
+        disparity_q = disparity / disparity_max
+        disparity_q = disparity_q * 255
+        img = disparity_q.astype(np.uint8)
+        img_color = cv2.applyColorMap(img, cv2.COLORMAP_JET)
+        cv2.imshow("Window", img_color)
 
-        pic_out = np.zeros((len(disparity), len(disparity[0]), 6), np.uint8)
-        img_color = cv2.applyColorMap(img1, cv2.COLORMAP_JET)
+        pic_out = np.zeros((len(disparity), len(disparity[0]), 6), np.float)
 
         for n in range(0, len(disparity)):
             for m in range(0, len(disparity[n])):
                 pic_out[n][m][0]=n
                 pic_out[n][m][1] =m
-                pic_out[n][m][2] = self.get_Z(disparity[n][m])
-                disparity[n][m] = self.get_Z(disparity[n][m])
-                pic_out[n][m][3] = img_color[n][m][0]
+                pic_out[n][m][2] = self.get_Z(disparity_q[n][m])
+                #pic_out[n][m][2] = disparity_q[n][m]
+                pic_out[n][m][3] = img_color[n][m][2]
                 pic_out[n][m][4] = img_color[n][m][1]
-                pic_out[n][m][5] = img_color[n][m][2]
+                pic_out[n][m][5] = img_color[n][m][0]
 
 
+       # print(pic_out[2][2][2])
         self.write_plyC('out\\punktwolke.ply', pic_out)
-        #cv2.imshow('img', img_out)
-        #cv2.waitKey(8000)
+        #cv2.imshow('img', disparity)
+        cv2.waitKey(8000)
 
 
     def get_Z(self, value):
         if(value == 0):
             return 0
         else:
-            out = (self.K.item(0) * self.t.item(0)) / value
-            if(out>255):
-                return 255
-            else:
-                #print("mapped "+str(value)+" to "+str(out))
-                return out
+            #out = (self.K.item(0) * self.t.item(0)) / value
+            #out = (0.54 * self.t.item(0)) / value
+            out = 100 - (0.54 * self.K.item(0)) / value
+            #print(out)
+            return out
 
 image_pathes = glob.glob("images\*.png")
 fx = 721.5
 fy = 721.5
 cx = 690.5
 cy = 172.8
+baseline = 0.54
 
 K = np.matrix([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], np.float)
 
@@ -236,3 +242,5 @@ A.find_essential_mat()
 #A.draw_epi(image_pathes[0], image_pathes[1])
 
 A.depthmap(image_pathes[0], image_pathes[1])
+
+print(A.t.item(0))
