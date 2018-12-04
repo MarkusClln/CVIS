@@ -189,7 +189,7 @@ class creator():
         disparity_q = disparity_q * 255
         img = disparity_q.astype(np.uint8)
         img_color = cv2.applyColorMap(img, cv2.COLORMAP_JET)
-        cv2.imshow("Window", img_color)
+        #cv2.imshow("Window", img_color)
 
         pic_out = np.zeros((len(disparity), len(disparity[0]), 6), np.float)
 
@@ -199,15 +199,11 @@ class creator():
                 pic_out[n][m][1] =m
                 pic_out[n][m][2] = self.get_Z(disparity_q[n][m])
                 #pic_out[n][m][2] = disparity_q[n][m]
-                pic_out[n][m][3] = img_color[n][m][2]
-                pic_out[n][m][4] = img_color[n][m][1]
-                pic_out[n][m][5] = img_color[n][m][0]
+                pic_out[n][m][3] = img1[n][m][2]
+                pic_out[n][m][4] = img1[n][m][1]
+                pic_out[n][m][5] = img1[n][m][0]
 
-
-       # print(pic_out[2][2][2])
-        self.write_plyC('out\\punktwolke.ply', pic_out)
-        #cv2.imshow('img', disparity)
-        cv2.waitKey(8000)
+        return pic_out
 
 
     def get_Z(self, value):
@@ -215,10 +211,125 @@ class creator():
             return 0
         else:
             #out = (self.K.item(0) * self.t.item(0)) / value
-            #out = (0.54 * self.t.item(0)) / value
-            out = 100 - (0.54 * self.K.item(0)) / value
+            out = (721.5 * self.t.item(0)) / value
+            #out = 100 - (0.54 * self.K.item(0)) / value
             #print(out)
-            return out
+            return out * -1
+
+    def extrinsische_transformation(self, pointcloud):
+        t1 = np.array([0.3, 0.3, 0.3])
+        t2 = np.array([0.6, 0.6, 0.6])
+        t3 = np.array([0.9, 0.9, 0.9])
+        t4 = np.array([1.2, 1.2, 1.2])
+
+        self.extrinsics = np.vstack((np.hstack((self.R1, np.reshape(t4, (3,1)))), np.array([0., 0., 0., 1.])))
+
+        pic_out = np.zeros((len(pointcloud), len(pointcloud[0]), 6), np.float)
+        for n in range(len(pointcloud)):
+            for m in range(len(pointcloud[0])):
+                x = np.array([[pointcloud[n][m][0]], [pointcloud[n][m][1]], [pointcloud[n][m][2]]])
+                x_trans = self.to3D(x)
+                pic_out[n][m][0] = x_trans[0]
+                pic_out[n][m][1] = x_trans[1]
+                pic_out[n][m][2] = x_trans[2]
+                pic_out[n][m][3] = pointcloud[n][m][3]
+                pic_out[n][m][4] = pointcloud[n][m][4]
+                pic_out[n][m][5] = pointcloud[n][m][5]
+
+        return pic_out
+
+
+
+    def to3D(self, point):
+        x = np.vstack([point, [1]])
+        x3D = self.extrinsics.dot(x)
+        x3D = np.array([x3D[0] / x3D[3], x3D[1] / x3D[3], x3D[2] / x3D[3]])
+        return x3D
+
+    def to2D(self, point):
+        t1 = np.array([0, 0, 0])
+        t1 = np.reshape(t1, (3, 1))
+        x = np.vstack([point, [1]])
+        P = np.hstack([self.K, t1])
+        x2D = P.dot(x)
+        if(x2D[2] != 0):
+            x2D = np.array([x2D[0] / x2D[2], x2D[1] / x2D[2]])
+            x2D = np.reshape(x2D, (2,1))
+            return x2D
+        else:
+            return (np.array([x2D[0] / 1, x2D[1] / 1]))
+
+    def pointcloud_to_pic(self, pointcloud):
+        for n in range(len(pointcloud)):
+            for m in range(len(pointcloud[0])):
+                x = np.array([[pointcloud[n][m][0]], [pointcloud[n][m][1]], [pointcloud[n][m][2]]])
+                x_trans = self.to2D(x)
+                pointcloud[n][m][0] = x_trans[0]
+                pointcloud[n][m][1] = x_trans[1]
+        x_min = np.amin(pointcloud[:][:][0])
+        y_min = np.amin(pointcloud[:][:][1])
+        print (np.amax(pointcloud[:][:][0]))
+        print( x_min)
+        print(np.amax(pointcloud[:][:][1]))
+        print(y_min)
+        pic_out = np.zeros((np.amax(pointcloud[:][:][0]) + 1 - x_min, np.amax(pointcloud[:][:][1]) + 1 - y_min, 3), np.uint8)
+        for n in range(len(pointcloud)):
+            for m in range(len(pointcloud[0])):
+                pic_out[int(x_trans[0]-x_min)][int(x_trans[1]-y_min)] = pointcloud[n][m][5]
+                pic_out[int(x_trans[0] - x_min)][int(x_trans[1] - y_min)] = pointcloud[n][m][4]
+                pic_out[int(x_trans[0] - x_min)][int(x_trans[1] - y_min)] = pointcloud[n][m][3]
+        return pic_out
+
+    def pointcloud_to_pic_2(self, pointcloud):
+        #points_3D = np.array([pointcloud[0][0][0], pointcloud[0][0][1], pointcloud[0][0][2]])
+
+        points_x = []
+        points_y = []
+        points_z = []
+        for n in range(len(pointcloud)):
+            for m in range(len(pointcloud[0])):
+                points_x.append(pointcloud[n][m][0])
+                points_y.append(pointcloud[n][m][1])
+                points_z.append(pointcloud[n][m][2])
+        color_r = []
+        color_g = []
+        color_b = []
+        for n in range(len(pointcloud)):
+            for m in range(len(pointcloud[0])):
+                color_r.append(pointcloud[n][m][3])
+                color_g.append(pointcloud[n][m][4])
+                color_b.append(pointcloud[n][m][5])
+        color_r = np.array(color_r, dtype=np.uint8)
+        color_g = np.array(color_g, dtype=np.uint8)
+        color_b = np.array(color_b, dtype=np.uint8)
+
+        points_3D = np.concatenate(([points_x], [points_y], [points_z]), axis=0).T
+        rvec = np.array([0.,0.,0.])
+        points_2D, jac= cv2.projectPoints(points_3D,rvec,rvec, self.K, distCoeffs= None)
+
+        points_2D = np.reshape(points_2D,(-1,2))
+
+        points_2D = points_2D.T
+        print(max(points_2D[0]))
+        print(max(points_2D[1]))
+        points_2D[0]= points_2D[0]/max(points_2D[0]) * 374
+        points_2D[1] = points_2D[1] / max(points_2D[1]) * 1241
+        points_2D = points_2D.T
+
+
+        pic_out = np.zeros((374, 1241, 3),np.uint8)
+
+        for i in range(0, len(points_2D)):
+            if(int(points_2D[i][0])<374 and int(points_2D[i][1])<1241 ):
+                pic_out[int(points_2D[i][0])][int(points_2D[i][1])] = [color_b[i], color_g[i], color_r[i]]
+
+        cv2.imshow("Window", pic_out)
+        cv2.imwrite("out\\test.png", pic_out)
+        cv2.waitKey(8000)
+
+
+
+
 
 image_pathes = glob.glob("images\*.png")
 fx = 721.5
@@ -241,6 +352,12 @@ A.find_essential_mat()
 #A.draw_Matches(image_pathes[0], image_pathes[1])
 #A.draw_epi(image_pathes[0], image_pathes[1])
 
-A.depthmap(image_pathes[0], image_pathes[1])
+pointcloud = A.depthmap(image_pathes[0], image_pathes[1])
 
-print(A.t.item(0))
+p1 = A.extrinsische_transformation(pointcloud)
+
+
+A.write_plyC('out\\punktwolke_4.ply', p1)
+
+
+A.pointcloud_to_pic_2(p1)
