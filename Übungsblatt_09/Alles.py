@@ -176,7 +176,7 @@ class creator():
         img1 = cv2.imread(path1)
         img2 = cv2.imread(path2)
 
-        blockSize = 10  # Gibt Fenstergroesse an (1-20)
+        blockSize = 6  # Gibt Fenstergroesse an (1-20)
         min_disp = 1  # Gibt minimale Disparitaet an (0-10)
         y = 4
         num_disp = 16 * y  # Gibt maxinale Disparitaet an
@@ -195,9 +195,9 @@ class creator():
 
         for n in range(0, len(disparity)):
             for m in range(0, len(disparity[n])):
-                pic_out[n][m][0]=n
-                pic_out[n][m][1] =m
-                pic_out[n][m][2] = self.get_Z(disparity_q[n][m])
+                pic_out[n][m][2] = self.get_Z(disparity[n][m])
+                pic_out[n][m][0] = (m - 690.6)* pic_out[n][m][2] /721.5
+                pic_out[n][m][1] = (n - 172.8) * pic_out[n][m][2] / 721.5
                 #pic_out[n][m][2] = disparity_q[n][m]
                 pic_out[n][m][3] = img1[n][m][2]
                 pic_out[n][m][4] = img1[n][m][1]
@@ -211,10 +211,12 @@ class creator():
             return 0
         else:
             #out = (self.K.item(0) * self.t.item(0)) / value
-            out = (721.5 * self.t.item(0)) / value
+            out = (721.5 * 0.54) / value
+            #out = (721.5 * 0.54) / value
+            #out = (0.54*self.t.item(0))/value
             #out = 100 - (0.54 * self.K.item(0)) / value
             #print(out)
-            return out * -1
+            return out
 
     def extrinsische_transformation(self, pointcloud):
         t1 = np.array([0.3, 0.3, 0.3])
@@ -259,26 +261,6 @@ class creator():
         else:
             return (np.array([x2D[0] / 1, x2D[1] / 1]))
 
-    def pointcloud_to_pic(self, pointcloud):
-        for n in range(len(pointcloud)):
-            for m in range(len(pointcloud[0])):
-                x = np.array([[pointcloud[n][m][0]], [pointcloud[n][m][1]], [pointcloud[n][m][2]]])
-                x_trans = self.to2D(x)
-                pointcloud[n][m][0] = x_trans[0]
-                pointcloud[n][m][1] = x_trans[1]
-        x_min = np.amin(pointcloud[:][:][0])
-        y_min = np.amin(pointcloud[:][:][1])
-        print (np.amax(pointcloud[:][:][0]))
-        print( x_min)
-        print(np.amax(pointcloud[:][:][1]))
-        print(y_min)
-        pic_out = np.zeros((np.amax(pointcloud[:][:][0]) + 1 - x_min, np.amax(pointcloud[:][:][1]) + 1 - y_min, 3), np.uint8)
-        for n in range(len(pointcloud)):
-            for m in range(len(pointcloud[0])):
-                pic_out[int(x_trans[0]-x_min)][int(x_trans[1]-y_min)] = pointcloud[n][m][5]
-                pic_out[int(x_trans[0] - x_min)][int(x_trans[1] - y_min)] = pointcloud[n][m][4]
-                pic_out[int(x_trans[0] - x_min)][int(x_trans[1] - y_min)] = pointcloud[n][m][3]
-        return pic_out
 
     def pointcloud_to_pic_2(self, pointcloud):
         #points_3D = np.array([pointcloud[0][0][0], pointcloud[0][0][1], pointcloud[0][0][2]])
@@ -286,35 +268,37 @@ class creator():
         points_x = []
         points_y = []
         points_z = []
-        for n in range(len(pointcloud)):
-            for m in range(len(pointcloud[0])):
-                points_x.append(pointcloud[n][m][0])
-                points_y.append(pointcloud[n][m][1])
-                points_z.append(pointcloud[n][m][2])
         color_r = []
         color_g = []
         color_b = []
         for n in range(len(pointcloud)):
             for m in range(len(pointcloud[0])):
+                points_x.append(pointcloud[n][m][0])
+                points_y.append(pointcloud[n][m][1])
+                points_z.append(pointcloud[n][m][2])
                 color_r.append(pointcloud[n][m][3])
                 color_g.append(pointcloud[n][m][4])
                 color_b.append(pointcloud[n][m][5])
+
         color_r = np.array(color_r, dtype=np.uint8)
         color_g = np.array(color_g, dtype=np.uint8)
         color_b = np.array(color_b, dtype=np.uint8)
 
+       # points_z=np.zeros(len(points_z))
+
         points_3D = np.concatenate(([points_x], [points_y], [points_z]), axis=0).T
         rvec = np.array([0.,0.,0.])
-        points_2D, jac= cv2.projectPoints(points_3D,rvec,rvec, self.K, distCoeffs= None)
+        tvec = np.array([0.9, 0.9, 0.9])
+        points_2D, jac= cv2.projectPoints(points_3D,rvec,tvec, self.K, distCoeffs= None)
 
         points_2D = np.reshape(points_2D,(-1,2))
 
-        points_2D = points_2D.T
-        print(max(points_2D[0]))
-        print(max(points_2D[1]))
-        points_2D[0]= points_2D[0]/max(points_2D[0]) * 374
-        points_2D[1] = points_2D[1] / max(points_2D[1]) * 1241
-        points_2D = points_2D.T
+        #points_2D = points_2D.T
+        #print(max(points_2D[0]))
+       # #print(max(points_2D[1]))
+        #points_2D[0]= points_2D[0]/max(points_2D[0]) * 374
+        #points_2D[1] = points_2D[1] / max(points_2D[1]) * 1241
+      #  points_2D = points_2D.T
 
 
         pic_out = np.zeros((374, 1241, 3),np.uint8)
@@ -324,7 +308,7 @@ class creator():
                 pic_out[int(points_2D[i][0])][int(points_2D[i][1])] = [color_b[i], color_g[i], color_r[i]]
 
         cv2.imshow("Window", pic_out)
-        cv2.imwrite("out\\test.png", pic_out)
+        cv2.imwrite("out\\pic_3.png", pic_out)
         cv2.waitKey(8000)
 
 
@@ -354,10 +338,10 @@ A.find_essential_mat()
 
 pointcloud = A.depthmap(image_pathes[0], image_pathes[1])
 
-p1 = A.extrinsische_transformation(pointcloud)
+#p1 = A.extrinsische_transformation(pointcloud)
 
 
-A.write_plyC('out\\punktwolke_4.ply', p1)
+A.write_plyC('out\\punktwolke.ply', pointcloud)
 
 
-A.pointcloud_to_pic_2(p1)
+A.pointcloud_to_pic_2(pointcloud)
